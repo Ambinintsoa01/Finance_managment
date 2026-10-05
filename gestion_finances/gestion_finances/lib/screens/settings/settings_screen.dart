@@ -7,6 +7,7 @@ import '../../data/remote/supabase_service.dart';
 import '../../data/sync/sync_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
+import '../../providers/security_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../categories/categories_screen.dart';
 import '../auth/login_screen.dart';
@@ -19,6 +20,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final isOnline = ref.watch(isOnlineProvider);
     final syncStatus = ref.watch(syncStatusProvider);
+    final securityState = ref.watch(securityProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Réglages')),
@@ -103,6 +105,90 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Sécurité & Verrouillage de l'appareil
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.shield_outlined, color: AppTheme.primary),
+                        SizedBox(width: 10),
+                        Text(
+                          'Sécurité & Confidentialité',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.fingerprint),
+                    title: const Text('Verrouillage biométrique & code'),
+                    subtitle: const Text(
+                      'Exiger Face Unlock, l\'empreinte ou le code de l\'appareil',
+                    ),
+                    value: securityState.isSecurityEnabled,
+                    onChanged: (val) async {
+                      final success = await ref
+                          .read(securityProvider.notifier)
+                          .toggleSecurity(val);
+                      if (!success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Authentification requise pour modifier ce paramètre',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  if (securityState.isSecurityEnabled) ...[
+                    SwitchListTile(
+                      secondary: const Icon(Icons.phonelink_lock_outlined),
+                      title: const Text('Verrouiller en arrière-plan'),
+                      subtitle: const Text(
+                        'Reverrouille dès que vous quittez l\'application',
+                      ),
+                      value: securityState.lockOnBackground,
+                      onChanged: (val) {
+                        ref
+                            .read(securityProvider.notifier)
+                            .toggleLockOnBackground(val);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.lock_clock_outlined),
+                      title: const Text('Verrouiller maintenant'),
+                      subtitle: const Text('Testez le verrouillage immédiatement'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                      onTap: () {
+                        ref.read(securityProvider.notifier).lock();
+                      },
+                    ),
+                  ],
+                  if (!securityState.isDeviceSupported)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        '⚠️ Aucun système de verrouillage (empreinte, Face Unlock ou code) n\'est configuré sur cet appareil.',
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
