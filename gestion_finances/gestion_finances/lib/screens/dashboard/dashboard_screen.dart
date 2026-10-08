@@ -5,6 +5,7 @@ import '../../data/sync/sync_service.dart';
 import '../../providers/sync_provider.dart';
 import 'widgets/account_carousel.dart';
 import 'widgets/balance_summary.dart';
+import 'widgets/capital_evolution_chart.dart';
 import 'widgets/category_pie_chart.dart';
 import 'widgets/income_expense_chart.dart';
 import 'widgets/period_selector.dart';
@@ -41,19 +42,20 @@ class DashboardScreen extends ConsumerWidget {
         onRefresh: () => ref.read(syncStatusProvider.notifier).sync(),
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          children: [
-            const AccountCarousel(),
-            const SizedBox(height: 16),
-            const BalanceSummary(),
-            const SizedBox(height: 20),
-            const Padding(
+          children: const [
+            AccountCarousel(),
+            SizedBox(height: 16),
+            BalanceSummary(),
+            SizedBox(height: 20),
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: PeriodSelector(),
             ),
-            const SizedBox(height: 8),
-            const IncomeExpenseChart(),
-            const CategoryPieChart(),
-            const SizedBox(height: 24),
+            SizedBox(height: 8),
+            IncomeExpenseChart(),
+            CategoryPieChart(),
+            CapitalEvolutionChart(),
+            SizedBox(height: 24),
           ],
         ),
       ),
