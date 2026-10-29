@@ -133,3 +133,25 @@ class SavingsGoals extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Table du sas de réflexion anti-achats impulsifs (Wishlist 48h).
+/// Permet de différer une envie d'achat non essentielle pour tester si l'envie persiste
+/// et quantifier l'argent économisé grâce à la maîtrise de soi.
+class WishlistItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().nullable()();
+  TextColumn get name => text()(); // ex: Montre connectée, Chaussures
+  RealColumn get amount => real()();
+  TextColumn get categoryId => text().named('category_id').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+  DateTimeColumn get targetDate => dateTime().named('target_date')(); // fin du délai de réflexion (ex: +48h)
+  TextColumn get status => text().withDefault(const Constant('waiting'))(); // waiting | resisted | bought
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at')();
+  BoolColumn get isDeleted =>
+      boolean().named('is_deleted').withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

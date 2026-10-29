@@ -6,14 +6,6 @@ import '../remote/supabase_service.dart';
 
 enum SyncStatus { idle, syncing, success, error, offline, notLoggedIn }
 
-/// Stratégie de synchronisation "Local-First" :
-///
-/// 1. PUSH : toutes les lignes locales marquées `dirty = true` (créées ou
-///    modifiées hors-ligne) sont envoyées vers Supabase via `upsert`.
-///    Une fois confirmées côté serveur, elles sont marquées `dirty = false`.
-///
-/// 2. PULL : on récupère depuis Supabase toutes les lignes dont
-///    `updated_at` est postérieur à la date du dernier sync réussi.
 class SyncService {
   SyncService(this._db);
 
@@ -156,6 +148,24 @@ class SyncService {
         await _db.markSavingsGoalSynced(g.id);
       }
     } catch (_) {}
+
+    try {
+      for (final w in await _db.getDirtyWishlist()) {
+        await _remote.pushWishlistItem({
+          'id': w.id,
+          'user_id': w.userId ?? userId,
+          'name': w.name,
+          'amount': w.amount,
+          'category_id': w.categoryId,
+          'created_at': w.createdAt.toIso8601String(),
+          'target_date': w.targetDate.toIso8601String(),
+          'status': w.status,
+          'note': w.note,
+          'is_deleted': w.isDeleted,
+        });
+        await _db.markWishlistSynced(w.id);
+      }
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------
@@ -284,6 +294,28 @@ class SyncService {
             color: Value(row['color'] as String? ?? '#2E7D5B'),
             icon: Value(row['icon'] as String? ?? 'savings'),
             createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            updatedAt: Value(updatedAt),
+            isDeleted: Value(row['is_deleted'] as bool),
+          ),
+          updatedAt,
+        );
+      }
+    } catch (_) {}
+
+    try {
+      for (final row in await _remote.pullWishlistItems(since)) {
+        final updatedAt = DateTime.parse(row['updated_at'] as String);
+        await _db.upsertWishlistItemFromRemote(
+          WishlistItemsCompanion(
+            id: Value(row['id'] as String),
+            userId: Value(row['user_id'] as String?),
+            name: Value(row['name'] as String),
+            amount: Value((row['amount'] as num).toDouble()),
+            categoryId: Value(row['category_id'] as String?),
+            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            targetDate: Value(DateTime.parse(row['target_date'] as String)),
+            status: Value(row['status'] as String? ?? 'waiting'),
+            note: Value(row['note'] as String?),
             updatedAt: Value(updatedAt),
             isDeleted: Value(row['is_deleted'] as bool),
           ),

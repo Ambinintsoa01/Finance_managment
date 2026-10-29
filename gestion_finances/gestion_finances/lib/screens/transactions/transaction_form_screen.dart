@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/database_provider.dart';
+import '../../providers/savings_goal_provider.dart';
 import '../../widgets/icon_avatar.dart';
 
 class TransactionFormScreen extends ConsumerStatefulWidget {
@@ -38,6 +39,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   String? _categoryId;
   DateTime _date = DateTime.now();
   bool _isNeed = true;
+  bool _roundUpToSavings = false;
+  String? _selectedGoalId;
   bool _saving = false;
 
   bool get _isEditing => widget.editingTransaction != null;
@@ -124,6 +127,15 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         isNeed: _isNeed,
         userId: userId,
       );
+
+      // Micro-épargne : versement de l'arrondi dans la cagnotte choisie
+      if (_type == TxType.expense && _roundUpToSavings && _selectedGoalId != null) {
+        final rounded = (amount / 1000).ceil() * 1000.0;
+        final roundDiff = rounded - amount;
+        if (roundDiff > 0) {
+          await ref.read(savingsGoalRepositoryProvider).adjustFunds(_selectedGoalId!, roundDiff);
+        }
+      }
     }
 
     if (mounted) Navigator.of(context).pop();
@@ -151,6 +163,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         ? ref.watch(incomeCategoriesProvider)
         : ref.watch(expenseCategoriesProvider);
     final categoryBudgets = ref.watch(monthlyCategoryBudgetsProvider);
+    final savingsGoals = ref.watch(allSavingsGoalsProvider).valueOrNull ?? [];
 
     // Calcul de l'alerte budget en direct
     CategoryBudgetStatus? selectedBudgetStatus;
@@ -161,6 +174,16 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           selectedBudgetStatus = cb;
           break;
         }
+      }
+    }
+
+    // Calcul de l'arrondi micro-épargne
+    double roundDifference = 0;
+    if (_type == TxType.expense && enteredAmount > 0) {
+      final rounded = (enteredAmount / 1000).ceil() * 1000.0;
+      roundDifference = rounded - enteredAmount;
+      if (_selectedGoalId == null && savingsGoals.isNotEmpty) {
+        _selectedGoalId = savingsGoals.first.id;
       }
     }
 
@@ -208,6 +231,36 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 return null;
               },
             ),
+
+            // Option Micro-Épargne par Arrondi
+            if (_type == TxType.expense && roundDifference > 0 && savingsGoals.isNotEmpty && !_isEditing) ...[
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.income.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.income.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.savings_outlined, color: AppTheme.income, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Arrondir à l\'épargne (+${formatAmount(roundDifference)})',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Switch(
+                      value: _roundUpToSavings,
+                      activeColor: AppTheme.income,
+                      onChanged: (v) => setState(() => _roundUpToSavings = v),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // Alerte budget préventive en direct
             if (selectedBudgetStatus != null && selectedBudgetStatus.hasBudget && enteredAmount > 0) ...[

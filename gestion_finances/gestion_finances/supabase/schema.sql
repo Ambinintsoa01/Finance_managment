@@ -117,6 +117,23 @@ create table if not exists public.savings_goals (
 );
 
 -- =============================================================================
+-- TABLE : wishlist_items (sas de réflexion anti-achats impulsifs 48h)
+-- =============================================================================
+create table if not exists public.wishlist_items (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  amount numeric not null check (amount > 0),
+  category_id uuid references public.categories(id) on delete set null,
+  created_at timestamptz not null default now(),
+  target_date timestamptz not null,
+  status text not null default 'waiting' check (status in ('waiting','resisted','bought')),
+  note text,
+  updated_at timestamptz not null default now(),
+  is_deleted boolean not null default false
+);
+
+-- =============================================================================
 -- INDEXES (performance des requêtes de synchronisation et de filtrage)
 -- =============================================================================
 create index if not exists idx_accounts_user on public.accounts(user_id);
@@ -140,6 +157,9 @@ create index if not exists idx_recurring_updated on public.recurring_transaction
 
 create index if not exists idx_savings_goals_user on public.savings_goals(user_id);
 create index if not exists idx_savings_goals_updated on public.savings_goals(updated_at);
+
+create index if not exists idx_wishlist_user on public.wishlist_items(user_id);
+create index if not exists idx_wishlist_updated on public.wishlist_items(updated_at);
 
 -- =============================================================================
 -- TRIGGER : mise à jour automatique de updated_at à chaque modification
@@ -182,6 +202,11 @@ create trigger set_updated_at_savings
   before update on public.savings_goals
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_updated_at_wishlist on public.wishlist_items;
+create trigger set_updated_at_wishlist
+  before update on public.wishlist_items
+  for each row execute function public.set_updated_at();
+
 -- =============================================================================
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================================================
@@ -191,6 +216,7 @@ alter table public.transactions enable row level security;
 alter table public.budgets enable row level security;
 alter table public.recurring_transactions enable row level security;
 alter table public.savings_goals enable row level security;
+alter table public.wishlist_items enable row level security;
 
 -- --- ACCOUNTS ---
 drop policy if exists "accounts_select_own" on public.accounts;
@@ -251,3 +277,13 @@ drop policy if exists "savings_update_own" on public.savings_goals;
 create policy "savings_update_own" on public.savings_goals for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "savings_delete_own" on public.savings_goals;
 create policy "savings_delete_own" on public.savings_goals for delete using (auth.uid() = user_id);
+
+-- --- WISHLIST ITEMS ---
+drop policy if exists "wishlist_select_own" on public.wishlist_items;
+create policy "wishlist_select_own" on public.wishlist_items for select using (auth.uid() = user_id);
+drop policy if exists "wishlist_insert_own" on public.wishlist_items;
+create policy "wishlist_insert_own" on public.wishlist_items for insert with check (auth.uid() = user_id);
+drop policy if exists "wishlist_update_own" on public.wishlist_items;
+create policy "wishlist_update_own" on public.wishlist_items for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "wishlist_delete_own" on public.wishlist_items;
+create policy "wishlist_delete_own" on public.wishlist_items for delete using (auth.uid() = user_id);

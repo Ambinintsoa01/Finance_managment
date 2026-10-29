@@ -6,14 +6,17 @@ import '../../core/constants.dart';
 import '../../core/icons_map.dart';
 import '../../core/utils.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/database_provider.dart';
 import '../../providers/recurring_provider.dart';
 import '../../providers/savings_goal_provider.dart';
+import '../../providers/wishlist_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/icon_avatar.dart';
 import '../recurring/recurring_form_sheet.dart';
 import '../savings/savings_deposit_sheet.dart';
 import '../savings/savings_goal_form_sheet.dart';
 import '../transactions/transaction_form_screen.dart';
+import '../wishlist/wishlist_form_sheet.dart';
 import 'budget_form_sheet.dart';
 
 class BudgetsScreen extends ConsumerStatefulWidget {
@@ -30,7 +33,7 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -49,10 +52,13 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen>
           labelColor: AppTheme.primary,
           unselectedLabelColor: Colors.grey,
           indicatorColor: AppTheme.primary,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(icon: Icon(Icons.pie_chart_outline), text: 'Enveloppes'),
             Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Charges fixes'),
             Tab(icon: Icon(Icons.savings_outlined), text: 'Cagnottes'),
+            Tab(icon: Icon(Icons.hourglass_empty_rounded), text: 'Anti-Pulsions (48h)'),
           ],
         ),
       ),
@@ -62,6 +68,7 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen>
           _EnvelopesTab(),
           _RecurringTab(),
           _SavingsGoalsTab(),
+          _AntiImpulseTab(),
         ],
       ),
     );
@@ -592,7 +599,7 @@ class _RecurringTab extends ConsumerWidget {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => TransactionFormScreen(
+                              builder: (_) => const TransactionFormScreen(
                                 initialType: TxType.expense,
                               ),
                             ),
@@ -875,6 +882,329 @@ class _SavingsGoalsTab extends ConsumerWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+// =============================================================================
+// ONGLET 4 : ANTI-PULSIONS (SAS DE RÉFLEXION 48H & FORECAST)
+// =============================================================================
+class _AntiImpulseTab extends ConsumerWidget {
+  const _AntiImpulseTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(wishlistSummaryProvider);
+    final forecast = ref.watch(monthEndForecastProvider);
+    final waiting = summary.waitingItems;
+    final now = DateTime.now();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      children: [
+        // Bannière Victoires sur les pulsions
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF5B247A), Color(0xFF1BCEDF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Victoires sur les pulsions',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${summary.resistedCount} tentations évitées 🏆',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formatAmount(summary.totalResistedSavings),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'économisés en prenant le temps de la réflexion avant d\'acheter !',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+
+        // Carte Simulateur Prévisionnel de Fin de Mois (Forecast)
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: forecast.isProjectedDeficit
+                  ? AppTheme.expense.withValues(alpha: 0.5)
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    forecast.isProjectedDeficit
+                        ? Icons.warning_amber_rounded
+                        : Icons.auto_graph_rounded,
+                    color: forecast.isProjectedDeficit
+                        ? AppTheme.expense
+                        : AppTheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Simulateur Prévisionnel de Fin de Mois',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: forecast.isProjectedDeficit
+                          ? AppTheme.expense
+                          : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Au rythme de dépenses actuel (${formatAmount(forecast.dailyBurnRate)}/jour) :',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Solde projeté au 31 :', style: TextStyle(fontSize: 13)),
+                  Text(
+                    formatAmount(forecast.projectedEndBalance),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: forecast.isProjectedDeficit ? AppTheme.expense : AppTheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Épargne nette estimée :', style: TextStyle(fontSize: 13)),
+                  Text(
+                    forecast.projectedSavings >= 0
+                        ? '+${formatAmount(forecast.projectedSavings)}'
+                        : formatAmount(forecast.projectedSavings),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: forecast.projectedSavings >= 0 ? AppTheme.income : AppTheme.expense,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Section Sas de réflexion en cours
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Sas de réflexion en cours',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Mettre en pause'),
+                onPressed: () => showWishlistFormSheet(context),
+              ),
+            ],
+          ),
+        ),
+
+        if (waiting.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: EmptyState(
+              icon: Icons.hourglass_empty_rounded,
+              title: 'Aucun article en attente',
+              subtitle:
+                  'Quand vous avez une envie subite d\'acheter un vêtement, un gadget ou un plaisir, ajoutez-le ici au lieu de payer tout de suite. Attendez 48h : vous éviterez la majorité des regrets !',
+            ),
+          )
+        else
+          ...waiting.map((item) {
+            final diff = item.targetDate.difference(now);
+            final isExpired = diff.isNegative;
+            final hoursLeft = diff.inHours.clamp(0, 999);
+            final minutesLeft = (diff.inMinutes % 60).clamp(0, 59);
+
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.purple.withValues(alpha: 0.15),
+                          child: const Icon(Icons.shopping_bag_outlined, color: Colors.purple),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              Text(
+                                formatAmount(item.amount),
+                                style: const TextStyle(
+                                  color: Colors.purple,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isExpired
+                                ? AppTheme.income.withValues(alpha: 0.15)
+                                : Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            isExpired
+                                ? 'Délai terminé !'
+                                : 'Reste ${hoursLeft}h ${minutesLeft}m ⏳',
+                            style: TextStyle(
+                              color: isExpired ? AppTheme.income : Colors.orange.shade800,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (item.note != null && item.note!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Note : ${item.note!}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          tooltip: 'Supprimer',
+                          onPressed: () => ref
+                              .read(wishlistRepositoryProvider)
+                              .deleteWishlistItem(item.id),
+                        ),
+                        const SizedBox(width: 6),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.shopping_cart_checkout, size: 16),
+                          label: const Text('Acheter'),
+                          onPressed: () async {
+                            await ref.read(wishlistRepositoryProvider).markBought(item.id);
+                            if (context.mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TransactionFormScreen(
+                                    initialType: TxType.expense,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.income,
+                          ),
+                          icon: const Icon(Icons.emoji_events_outlined, size: 16),
+                          label: const Text('J\'y renonce ! 🎉'),
+                          onPressed: () async {
+                            await ref.read(wishlistRepositoryProvider).markResisted(item.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Victoire ! Vous avez économisé ${formatAmount(item.amount)} ! 🏆',
+                                  ),
+                                  backgroundColor: AppTheme.income,
+                                ),
+                              );
+                            }
+                          },
                         ),
                       ],
                     ),

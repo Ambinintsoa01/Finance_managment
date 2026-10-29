@@ -17,6 +17,7 @@ part 'database.g.dart';
   Budgets,
   RecurringTransactions,
   SavingsGoals,
+  WishlistItems,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -32,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +46,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.createTable(recurringTransactions);
             await m.createTable(savingsGoals);
+          }
+          if (from < 4) {
+            await m.createTable(wishlistItems);
           }
         },
       );
@@ -323,6 +327,41 @@ class AppDatabase extends _$AppDatabase {
       );
 
   // ---------------------------------------------------------------------
+  // WISHLIST & ANTI-ACHATS IMPULSIFS (Sas 48h)
+  // ---------------------------------------------------------------------
+
+  Stream<List<WishlistItem>> watchAllWishlist() {
+    return (select(wishlistItems)
+          ..where((w) => w.isDeleted.equals(false))
+          ..orderBy([(w) => OrderingTerm(expression: w.createdAt, mode: OrderingMode.desc)]))
+        .watch();
+  }
+
+  Future<WishlistItem?> getWishlistItemById(String id) =>
+      (select(wishlistItems)..where((w) => w.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertWishlistItem(WishlistItemsCompanion item) =>
+      into(wishlistItems).insertOnConflictUpdate(item);
+
+  Future<void> updateWishlistStatus(String id, String status) =>
+      (update(wishlistItems)..where((w) => w.id.equals(id))).write(
+        WishlistItemsCompanion(
+          status: Value(status),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> softDeleteWishlistItem(String id) =>
+      (update(wishlistItems)..where((w) => w.id.equals(id))).write(
+        WishlistItemsCompanion(
+          isDeleted: const Value(true),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  // ---------------------------------------------------------------------
   // SYNCHRONISATION
   // ---------------------------------------------------------------------
 
@@ -338,6 +377,8 @@ class AppDatabase extends _$AppDatabase {
       (select(recurringTransactions)..where((r) => r.dirty.equals(true))).get();
   Future<List<SavingsGoal>> getDirtySavingsGoals() =>
       (select(savingsGoals)..where((g) => g.dirty.equals(true))).get();
+  Future<List<WishlistItem>> getDirtyWishlist() =>
+      (select(wishlistItems)..where((w) => w.dirty.equals(true))).get();
 
   Future<void> markAccountSynced(String id) =>
       (update(accounts)..where((a) => a.id.equals(id)))
@@ -357,6 +398,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> markSavingsGoalSynced(String id) =>
       (update(savingsGoals)..where((g) => g.id.equals(id)))
           .write(const SavingsGoalsCompanion(dirty: Value(false)));
+  Future<void> markWishlistSynced(String id) =>
+      (update(wishlistItems)..where((w) => w.id.equals(id)))
+          .write(const WishlistItemsCompanion(dirty: Value(false)));
 
   /// Assigne un user_id à toutes les lignes locales orphelines (créées hors
   /// connexion) au moment où l'utilisateur se connecte pour la première fois.
@@ -378,6 +422,9 @@ class AppDatabase extends _$AppDatabase {
     );
     await (update(savingsGoals)..where((g) => g.userId.isNull())).write(
       SavingsGoalsCompanion(userId: Value(userId), dirty: const Value(true)),
+    );
+    await (update(wishlistItems)..where((w) => w.userId.isNull())).write(
+      WishlistItemsCompanion(userId: Value(userId), dirty: const Value(true)),
     );
   }
 
@@ -440,6 +487,16 @@ class AppDatabase extends _$AppDatabase {
       return;
     }
     await into(savingsGoals).insertOnConflictUpdate(
+      remote.copyWith(dirty: const Value(false)),
+    );
+  }
+
+  Future<void> upsertWishlistItemFromRemote(WishlistItemsCompanion remote, DateTime remoteUpdatedAt) async {
+    final existing = await (select(wishlistItems)..where((w) => w.id.equals(remote.id.value))).getSingleOrNull();
+    if (existing != null && existing.updatedAt.isAfter(remoteUpdatedAt) && existing.dirty) {
+      return;
+    }
+    await into(wishlistItems).insertOnConflictUpdate(
       remote.copyWith(dirty: const Value(false)),
     );
   }

@@ -7,6 +7,7 @@ import '../data/repositories/category_repository.dart';
 import '../data/repositories/recurring_repository.dart';
 import '../data/repositories/savings_goal_repository.dart';
 import '../data/repositories/transaction_repository.dart';
+import '../data/repositories/wishlist_repository.dart';
 import '../data/sync/sync_service.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -37,6 +38,10 @@ final recurringRepositoryProvider = Provider<RecurringRepository>((ref) {
 
 final savingsGoalRepositoryProvider = Provider<SavingsGoalRepository>((ref) {
   return SavingsGoalRepository(ref.watch(databaseProvider));
+});
+
+final wishlistRepositoryProvider = Provider<WishlistRepository>((ref) {
+  return WishlistRepository(ref.watch(databaseProvider));
 });
 
 final syncServiceProvider = Provider<SyncService>((ref) {

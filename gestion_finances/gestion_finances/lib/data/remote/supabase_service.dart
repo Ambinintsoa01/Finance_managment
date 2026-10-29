@@ -125,4 +125,20 @@ class SupabaseService {
     final res = await query;
     return List<Map<String, dynamic>>.from(res);
   }
+
+  // ---------------------------------------------------------------------
+  // WISHLIST ITEMS (Anti-Achats impulsifs)
+  // ---------------------------------------------------------------------
+
+  Future<void> pushWishlistItem(Map<String, dynamic> data) =>
+      client.from('wishlist_items').upsert(data);
+
+  Future<List<Map<String, dynamic>>> pullWishlistItems(DateTime? since) async {
+    var query = client.from('wishlist_items').select();
+    if (since != null) {
+      query = query.gt('updated_at', since.toIso8601String());
+    }
+    final res = await query;
+    return List<Map<String, dynamic>>.from(res);
+  }
 }
