@@ -9,6 +9,7 @@ import 'widgets/capital_evolution_chart.dart';
 import 'widgets/category_pie_chart.dart';
 import 'widgets/income_expense_chart.dart';
 import 'widgets/period_selector.dart';
+import 'widgets/rule_503020_card.dart';
 import 'widgets/safe_to_spend_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -49,7 +50,8 @@ class DashboardScreen extends ConsumerWidget {
             BalanceSummary(),
             SizedBox(height: 8),
             SafeToSpendCard(),
-            SizedBox(height: 12),
+            Rule503020Card(),
+            SizedBox(height: 8),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: PeriodSelector(),

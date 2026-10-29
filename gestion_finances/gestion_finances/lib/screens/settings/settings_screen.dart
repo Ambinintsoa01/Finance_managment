@@ -10,6 +10,7 @@ import '../../providers/connectivity_provider.dart';
 import '../../providers/security_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../categories/categories_screen.dart';
+import '../audit/financial_audit_screen.dart';
 import '../auth/login_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -105,6 +106,19 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.insights_rounded, color: AppTheme.primary),
+              title: const Text('Audit Financier & Stratégie'),
+              subtitle: const Text('Règle 50/30/20, fuites d\'argent et projection'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FinancialAuditScreen()),
               ),
             ),
           ),

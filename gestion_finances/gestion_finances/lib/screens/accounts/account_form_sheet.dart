@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
 import '../../data/local/database.dart';
-import '../../providers/account_provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../widgets/color_icon_picker.dart';
