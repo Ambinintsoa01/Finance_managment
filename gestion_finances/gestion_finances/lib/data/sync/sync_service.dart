@@ -13,17 +13,7 @@ enum SyncStatus { idle, syncing, success, error, offline, notLoggedIn }
 ///    Une fois confirmées côté serveur, elles sont marquées `dirty = false`.
 ///
 /// 2. PULL : on récupère depuis Supabase toutes les lignes dont
-///    `updated_at` est postérieur à la date du dernier sync réussi
-///    (stockée dans SharedPreferences). Chaque ligne distante est fusionnée
-///    localement avec une résolution de conflit "last-write-wins" : si la
-///    ligne locale est `dirty` ET plus récente que la version distante, on
-///    la conserve (elle sera poussée au prochain push) ; sinon on écrase
-///    avec la version distante.
-///
-/// Cette approche permet un fonctionnement 100% hors-ligne : les écritures
-/// locales sont toujours immédiates, la synchronisation se fait en
-/// arrière-plan dès qu'une connexion et une session utilisateur sont
-/// disponibles.
+///    `updated_at` est postérieur à la date du dernier sync réussi.
 class SyncService {
   SyncService(this._db);
 
@@ -108,11 +98,64 @@ class SyncService {
         'type': tx.type,
         'date': tx.date.toIso8601String(),
         'note': tx.note,
+        'is_need': tx.isNeed,
         'created_at': tx.createdAt.toIso8601String(),
         'is_deleted': tx.isDeleted,
       });
       await _db.markTransactionSynced(tx.id);
     }
+
+    try {
+      for (final b in await _db.getDirtyBudgets()) {
+        await _remote.pushBudget({
+          'id': b.id,
+          'user_id': b.userId ?? userId,
+          'category_id': b.categoryId,
+          'amount': b.amount,
+          'created_at': b.createdAt.toIso8601String(),
+          'is_deleted': b.isDeleted,
+        });
+        await _db.markBudgetSynced(b.id);
+      }
+    } catch (_) {}
+
+    try {
+      for (final r in await _db.getDirtyRecurring()) {
+        await _remote.pushRecurring({
+          'id': r.id,
+          'user_id': r.userId ?? userId,
+          'name': r.name,
+          'amount': r.amount,
+          'type': r.type,
+          'account_id': r.accountId,
+          'category_id': r.categoryId,
+          'day_of_month': r.dayOfMonth,
+          'note': r.note,
+          'is_active': r.isActive,
+          'created_at': r.createdAt.toIso8601String(),
+          'is_deleted': r.isDeleted,
+        });
+        await _db.markRecurringSynced(r.id);
+      }
+    } catch (_) {}
+
+    try {
+      for (final g in await _db.getDirtySavingsGoals()) {
+        await _remote.pushSavingsGoal({
+          'id': g.id,
+          'user_id': g.userId ?? userId,
+          'name': g.name,
+          'target_amount': g.targetAmount,
+          'current_amount': g.currentAmount,
+          'target_date': g.targetDate?.toIso8601String(),
+          'color': g.color,
+          'icon': g.icon,
+          'created_at': g.createdAt.toIso8601String(),
+          'is_deleted': g.isDeleted,
+        });
+        await _db.markSavingsGoalSynced(g.id);
+      }
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------
@@ -174,6 +217,7 @@ class SyncService {
           type: Value(row['type'] as String),
           date: Value(DateTime.parse(row['date'] as String)),
           note: Value(row['note'] as String?),
+          isNeed: Value(row['is_need'] as bool? ?? true),
           createdAt: Value(DateTime.parse(row['created_at'] as String)),
           updatedAt: Value(updatedAt),
           isDeleted: Value(row['is_deleted'] as bool),
@@ -181,5 +225,71 @@ class SyncService {
         updatedAt,
       );
     }
+
+    try {
+      for (final row in await _remote.pullBudgets(since)) {
+        final updatedAt = DateTime.parse(row['updated_at'] as String);
+        await _db.upsertBudgetFromRemote(
+          BudgetsCompanion(
+            id: Value(row['id'] as String),
+            userId: Value(row['user_id'] as String?),
+            categoryId: Value(row['category_id'] as String),
+            amount: Value((row['amount'] as num).toDouble()),
+            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            updatedAt: Value(updatedAt),
+            isDeleted: Value(row['is_deleted'] as bool),
+          ),
+          updatedAt,
+        );
+      }
+    } catch (_) {}
+
+    try {
+      for (final row in await _remote.pullRecurring(since)) {
+        final updatedAt = DateTime.parse(row['updated_at'] as String);
+        await _db.upsertRecurringFromRemote(
+          RecurringTransactionsCompanion(
+            id: Value(row['id'] as String),
+            userId: Value(row['user_id'] as String?),
+            name: Value(row['name'] as String),
+            amount: Value((row['amount'] as num).toDouble()),
+            type: Value(row['type'] as String),
+            accountId: Value(row['account_id'] as String),
+            categoryId: Value(row['category_id'] as String?),
+            dayOfMonth: Value(row['day_of_month'] as int),
+            note: Value(row['note'] as String?),
+            isActive: Value(row['is_active'] as bool? ?? true),
+            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            updatedAt: Value(updatedAt),
+            isDeleted: Value(row['is_deleted'] as bool),
+          ),
+          updatedAt,
+        );
+      }
+    } catch (_) {}
+
+    try {
+      for (final row in await _remote.pullSavingsGoals(since)) {
+        final updatedAt = DateTime.parse(row['updated_at'] as String);
+        await _db.upsertSavingsGoalFromRemote(
+          SavingsGoalsCompanion(
+            id: Value(row['id'] as String),
+            userId: Value(row['user_id'] as String?),
+            name: Value(row['name'] as String),
+            targetAmount: Value((row['target_amount'] as num).toDouble()),
+            currentAmount: Value((row['current_amount'] as num).toDouble()),
+            targetDate: Value(row['target_date'] != null
+                ? DateTime.parse(row['target_date'] as String)
+                : null),
+            color: Value(row['color'] as String? ?? '#2E7D5B'),
+            icon: Value(row['icon'] as String? ?? 'savings'),
+            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            updatedAt: Value(updatedAt),
+            isDeleted: Value(row['is_deleted'] as bool),
+          ),
+          updatedAt,
+        );
+      }
+    } catch (_) {}
   }
 }

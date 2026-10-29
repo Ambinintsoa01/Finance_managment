@@ -21,6 +21,7 @@ class TransactionRepository {
     String? categoryId,
     required DateTime date,
     String? note,
+    bool isNeed = true,
     String? userId,
   }) async {
     assert(amount > 0, 'Le montant doit être positif');
@@ -41,6 +42,7 @@ class TransactionRepository {
         type: type,
         date: date,
         note: Value(note),
+        isNeed: Value(isNeed),
         createdAt: now,
         updatedAt: now,
       ),
@@ -54,6 +56,7 @@ class TransactionRepository {
     String? categoryId,
     DateTime? date,
     String? note,
+    bool? isNeed,
   }) async {
     await _db.upsertTransaction(
       TransactionsCompanion(
@@ -66,6 +69,7 @@ class TransactionRepository {
         type: Value(tx.type),
         date: Value(date ?? tx.date),
         note: Value(note ?? tx.note),
+        isNeed: Value(isNeed ?? tx.isNeed),
         createdAt: Value(tx.createdAt),
         updatedAt: Value(DateTime.now()),
         dirty: const Value(true),

@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/constants.dart';
-import '../../core/utils.dart';
 import '../../core/icons_map.dart';
+import '../../core/utils.dart';
 import '../../data/local/database.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../widgets/icon_avatar.dart';
@@ -36,6 +37,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   String? _destinationAccountId;
   String? _categoryId;
   DateTime _date = DateTime.now();
+  bool _isNeed = true;
   bool _saving = false;
 
   bool get _isEditing => widget.editingTransaction != null;
@@ -49,14 +51,21 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     _destinationAccountId = tx?.destinationAccountId;
     _categoryId = tx?.categoryId;
     _date = tx?.date ?? DateTime.now();
+    _isNeed = tx?.isNeed ?? true;
     if (tx != null) {
       _amountCtrl.text = tx.amount.toStringAsFixed(0);
       _noteCtrl.text = tx.note ?? '';
     }
+    _amountCtrl.addListener(_onAmountChanged);
+  }
+
+  void _onAmountChanged() {
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _amountCtrl.removeListener(_onAmountChanged);
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
@@ -101,6 +110,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         categoryId: _type == TxType.transfer ? null : _categoryId,
         date: _date,
         note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        isNeed: _isNeed,
       );
     } else {
       await repo.createTransaction(
@@ -111,6 +121,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         categoryId: _type == TxType.transfer ? null : _categoryId,
         date: _date,
         note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        isNeed: _isNeed,
         userId: userId,
       );
     }
@@ -139,6 +150,19 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final categories = _type == TxType.income
         ? ref.watch(incomeCategoriesProvider)
         : ref.watch(expenseCategoriesProvider);
+    final categoryBudgets = ref.watch(monthlyCategoryBudgetsProvider);
+
+    // Calcul de l'alerte budget en direct
+    CategoryBudgetStatus? selectedBudgetStatus;
+    double enteredAmount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0;
+    if (_type == TxType.expense && _categoryId != null) {
+      for (final cb in categoryBudgets) {
+        if (cb.category.id == _categoryId) {
+          selectedBudgetStatus = cb;
+          break;
+        }
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Modifier le mouvement' : 'Nouveau mouvement')),
@@ -184,6 +208,17 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 return null;
               },
             ),
+
+            // Alerte budget préventive en direct
+            if (selectedBudgetStatus != null && selectedBudgetStatus.hasBudget && enteredAmount > 0) ...[
+              _LiveBudgetAlert(
+                status: selectedBudgetStatus,
+                enteredAmount: enteredAmount,
+                isEditing: _isEditing,
+                originalAmount: widget.editingTransaction?.amount ?? 0,
+              ),
+            ],
+
             const Divider(height: 32),
 
             // Compte source
@@ -211,6 +246,51 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 categories: categories,
                 selectedId: _categoryId,
                 onSelected: (id) => setState(() => _categoryId = id),
+              ),
+            ],
+
+            // Nature de la dépense (Besoin vital vs Envie/Plaisir)
+            if (_type == TxType.expense) ...[
+              const SizedBox(height: 20),
+              const _SectionLabel('Nature de la dépense (Anticipation)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.shield_outlined, size: 16),
+                          SizedBox(width: 6),
+                          Text('Besoin essentiel'),
+                        ],
+                      ),
+                      selected: _isNeed,
+                      selectedColor: AppTheme.primary.withValues(alpha: 0.2),
+                      onSelected: (selected) {
+                        if (selected) setState(() => _isNeed = true);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.auto_awesome_outlined, size: 16),
+                          SizedBox(width: 6),
+                          Text('Envie / Plaisir'),
+                        ],
+                      ),
+                      selected: !_isNeed,
+                      selectedColor: Colors.purple.withValues(alpha: 0.2),
+                      onSelected: (selected) {
+                        if (selected) setState(() => _isNeed = false);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
 
@@ -259,7 +339,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   await ref.read(databaseProvider).softDeleteTransaction(widget.editingTransaction!.id);
-                  if (mounted) Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
                 label: const Text('Supprimer', style: TextStyle(color: Colors.red)),
@@ -267,6 +347,70 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LiveBudgetAlert extends StatelessWidget {
+  const _LiveBudgetAlert({
+    required this.status,
+    required this.enteredAmount,
+    required this.isEditing,
+    required this.originalAmount,
+  });
+
+  final CategoryBudgetStatus status;
+  final double enteredAmount;
+  final bool isEditing;
+  final double originalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final alreadySpent = isEditing
+        ? (status.spent - originalAmount).clamp(0.0, double.infinity)
+        : status.spent;
+    final totalProjected = alreadySpent + enteredAmount;
+    final limit = status.limit;
+    final isExceeded = totalProjected > limit;
+    final isClose = totalProjected >= limit * 0.8 && !isExceeded;
+
+    if (!isExceeded && !isClose) return const SizedBox.shrink();
+
+    final color = isExceeded ? AppTheme.expense : Colors.orange.shade800;
+    final bgColor = isExceeded
+        ? AppTheme.expense.withValues(alpha: 0.12)
+        : Colors.orange.withValues(alpha: 0.12);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isExceeded ? Icons.warning_amber_rounded : Icons.info_outline,
+            color: color,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isExceeded
+                  ? 'Alerte : cette dépense va dépasser votre budget ${status.category.name} de ${formatAmount(totalProjected - limit)} !'
+                  : 'Attention : vous consommerez ${((totalProjected / limit) * 100).toStringAsFixed(0)}% du budget ${status.category.name}.',
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

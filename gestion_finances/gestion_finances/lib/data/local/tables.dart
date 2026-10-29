@@ -57,6 +57,73 @@ class Transactions extends Table {
   TextColumn get type => text()(); // income | expense | transfer
   DateTimeColumn get date => dateTime()();
   TextColumn get note => text().nullable()();
+  /// Permet de distinguer un besoin vital (loyer, nourriture essentielle...)
+  /// d'une envie/plaisir (shopping, sortie, coup de tête).
+  BoolColumn get isNeed =>
+      boolean().named('is_need').withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at')();
+  BoolColumn get isDeleted =>
+      boolean().named('is_deleted').withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table des plafonds budgétaires mensuels par catégorie de dépense.
+/// Utilisée pour le suivi des enveloppes et le calcul du "reste à vivre".
+class Budgets extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().nullable()();
+  TextColumn get categoryId => text().named('category_id')();
+  RealColumn get amount => real()(); // Plafond mensuel alloué
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at')();
+  BoolColumn get isDeleted =>
+      boolean().named('is_deleted').withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table des charges fixes et revenus récurrents (loyer, électricité, abonnements, salaire régulier).
+/// Permet de pré-réserver ces montants sur le reste à vivre dès le 1er du mois.
+class RecurringTransactions extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().nullable()();
+  TextColumn get name => text()(); // ex: Loyer, Facture Jirama, Internet
+  RealColumn get amount => real()();
+  TextColumn get type => text()(); // income | expense
+  TextColumn get accountId => text().named('account_id')();
+  TextColumn get categoryId => text().named('category_id').nullable()();
+  IntColumn get dayOfMonth => integer().named('day_of_month')(); // 1 - 31
+  TextColumn get note => text().nullable()();
+  BoolColumn get isActive =>
+      boolean().named('is_active').withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at')();
+  BoolColumn get isDeleted =>
+      boolean().named('is_deleted').withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table des cagnottes d'épargne et fonds d'urgence.
+/// Permet d'isoler l'argent économisé et de suivre la progression vers un objectif.
+class SavingsGoals extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().nullable()();
+  TextColumn get name => text()(); // ex: Fonds d'urgence (3 mois), Achat Ordinateur
+  RealColumn get targetAmount => real().named('target_amount')();
+  RealColumn get currentAmount =>
+      real().named('current_amount').withDefault(const Constant(0))();
+  DateTimeColumn get targetDate => dateTime().named('target_date').nullable()();
+  TextColumn get color => text().withDefault(const Constant('#2E7D5B'))();
+  TextColumn get icon => text().withDefault(const Constant('savings'))();
   DateTimeColumn get createdAt => dateTime().named('created_at')();
   DateTimeColumn get updatedAt => dateTime().named('updated_at')();
   BoolColumn get isDeleted =>

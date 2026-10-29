@@ -9,6 +9,7 @@ import 'widgets/capital_evolution_chart.dart';
 import 'widgets/category_pie_chart.dart';
 import 'widgets/income_expense_chart.dart';
 import 'widgets/period_selector.dart';
+import 'widgets/safe_to_spend_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -46,7 +47,9 @@ class DashboardScreen extends ConsumerWidget {
             AccountCarousel(),
             SizedBox(height: 16),
             BalanceSummary(),
-            SizedBox(height: 20),
+            SizedBox(height: 8),
+            SafeToSpendCard(),
+            SizedBox(height: 12),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: PeriodSelector(),

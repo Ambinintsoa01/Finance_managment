@@ -10,7 +10,14 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Accounts, Categories, Transactions])
+@DriftDatabase(tables: [
+  Accounts,
+  Categories,
+  Transactions,
+  Budgets,
+  RecurringTransactions,
+  SavingsGoals,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -25,7 +32,22 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(budgets);
+            await m.addColumn(transactions, transactions.isNeed);
+          }
+          if (from < 3) {
+            await m.createTable(recurringTransactions);
+            await m.createTable(savingsGoals);
+          }
+        },
+      );
 
   // ---------------------------------------------------------------------
   // ACCOUNTS
@@ -203,6 +225,104 @@ class AppDatabase extends _$AppDatabase {
       );
 
   // ---------------------------------------------------------------------
+  // BUDGETS
+  // ---------------------------------------------------------------------
+
+  Stream<List<Budget>> watchAllBudgets() {
+    return (select(budgets)
+          ..where((b) => b.isDeleted.equals(false))
+          ..orderBy([(b) => OrderingTerm(expression: b.createdAt)]))
+        .watch();
+  }
+
+  Future<List<Budget>> getAllActiveBudgets() =>
+      (select(budgets)..where((b) => b.isDeleted.equals(false))).get();
+
+  Future<Budget?> getBudgetByCategoryId(String categoryId) =>
+      (select(budgets)
+            ..where((b) =>
+                b.categoryId.equals(categoryId) & b.isDeleted.equals(false)))
+          .getSingleOrNull();
+
+  Future<void> upsertBudget(BudgetsCompanion budget) =>
+      into(budgets).insertOnConflictUpdate(budget);
+
+  Future<void> softDeleteBudget(String id) =>
+      (update(budgets)..where((b) => b.id.equals(id))).write(
+        BudgetsCompanion(
+          isDeleted: const Value(true),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  // ---------------------------------------------------------------------
+  // RECURRING TRANSACTIONS (Charges fixes & Revenus réguliers)
+  // ---------------------------------------------------------------------
+
+  Stream<List<RecurringTransaction>> watchAllRecurring() {
+    return (select(recurringTransactions)
+          ..where((r) => r.isDeleted.equals(false))
+          ..orderBy([(r) => OrderingTerm(expression: r.dayOfMonth)]))
+        .watch();
+  }
+
+  Future<List<RecurringTransaction>> getAllActiveRecurring() =>
+      (select(recurringTransactions)
+            ..where((r) => r.isDeleted.equals(false) & r.isActive.equals(true)))
+          .get();
+
+  Future<void> upsertRecurring(RecurringTransactionsCompanion recurring) =>
+      into(recurringTransactions).insertOnConflictUpdate(recurring);
+
+  Future<void> softDeleteRecurring(String id) =>
+      (update(recurringTransactions)..where((r) => r.id.equals(id))).write(
+        RecurringTransactionsCompanion(
+          isDeleted: const Value(true),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  // ---------------------------------------------------------------------
+  // SAVINGS GOALS (Cagnottes & Fonds d'urgence)
+  // ---------------------------------------------------------------------
+
+  Stream<List<SavingsGoal>> watchAllSavingsGoals() {
+    return (select(savingsGoals)
+          ..where((g) => g.isDeleted.equals(false))
+          ..orderBy([(g) => OrderingTerm(expression: g.createdAt)]))
+        .watch();
+  }
+
+  Future<List<SavingsGoal>> getAllActiveSavingsGoals() =>
+      (select(savingsGoals)..where((g) => g.isDeleted.equals(false))).get();
+
+  Future<SavingsGoal?> getSavingsGoalById(String id) =>
+      (select(savingsGoals)..where((g) => g.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertSavingsGoal(SavingsGoalsCompanion goal) =>
+      into(savingsGoals).insertOnConflictUpdate(goal);
+
+  Future<void> updateSavingsGoalAmount(String id, double newAmount) =>
+      (update(savingsGoals)..where((g) => g.id.equals(id))).write(
+        SavingsGoalsCompanion(
+          currentAmount: Value(newAmount.clamp(0.0, double.infinity)),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> softDeleteSavingsGoal(String id) =>
+      (update(savingsGoals)..where((g) => g.id.equals(id))).write(
+        SavingsGoalsCompanion(
+          isDeleted: const Value(true),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  // ---------------------------------------------------------------------
   // SYNCHRONISATION
   // ---------------------------------------------------------------------
 
@@ -212,6 +332,12 @@ class AppDatabase extends _$AppDatabase {
       (select(categories)..where((c) => c.dirty.equals(true))).get();
   Future<List<Transaction>> getDirtyTransactions() =>
       (select(transactions)..where((t) => t.dirty.equals(true))).get();
+  Future<List<Budget>> getDirtyBudgets() =>
+      (select(budgets)..where((b) => b.dirty.equals(true))).get();
+  Future<List<RecurringTransaction>> getDirtyRecurring() =>
+      (select(recurringTransactions)..where((r) => r.dirty.equals(true))).get();
+  Future<List<SavingsGoal>> getDirtySavingsGoals() =>
+      (select(savingsGoals)..where((g) => g.dirty.equals(true))).get();
 
   Future<void> markAccountSynced(String id) =>
       (update(accounts)..where((a) => a.id.equals(id)))
@@ -222,6 +348,15 @@ class AppDatabase extends _$AppDatabase {
   Future<void> markTransactionSynced(String id) =>
       (update(transactions)..where((t) => t.id.equals(id)))
           .write(const TransactionsCompanion(dirty: Value(false)));
+  Future<void> markBudgetSynced(String id) =>
+      (update(budgets)..where((b) => b.id.equals(id)))
+          .write(const BudgetsCompanion(dirty: Value(false)));
+  Future<void> markRecurringSynced(String id) =>
+      (update(recurringTransactions)..where((r) => r.id.equals(id)))
+          .write(const RecurringTransactionsCompanion(dirty: Value(false)));
+  Future<void> markSavingsGoalSynced(String id) =>
+      (update(savingsGoals)..where((g) => g.id.equals(id)))
+          .write(const SavingsGoalsCompanion(dirty: Value(false)));
 
   /// Assigne un user_id à toutes les lignes locales orphelines (créées hors
   /// connexion) au moment où l'utilisateur se connecte pour la première fois.
@@ -235,6 +370,15 @@ class AppDatabase extends _$AppDatabase {
     await (update(transactions)..where((t) => t.userId.isNull())).write(
       TransactionsCompanion(userId: Value(userId), dirty: const Value(true)),
     );
+    await (update(budgets)..where((b) => b.userId.isNull())).write(
+      BudgetsCompanion(userId: Value(userId), dirty: const Value(true)),
+    );
+    await (update(recurringTransactions)..where((r) => r.userId.isNull())).write(
+      RecurringTransactionsCompanion(userId: Value(userId), dirty: const Value(true)),
+    );
+    await (update(savingsGoals)..where((g) => g.userId.isNull())).write(
+      SavingsGoalsCompanion(userId: Value(userId), dirty: const Value(true)),
+    );
   }
 
   /// Insère ou remplace une ligne venant du cloud, seulement si la version
@@ -243,7 +387,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertAccountFromRemote(AccountsCompanion remote, DateTime remoteUpdatedAt) async {
     final local = await getAccountById(remote.id.value);
     if (local != null && local.updatedAt.isAfter(remoteUpdatedAt) && local.dirty) {
-      return; // la version locale non-synchronisée est plus récente, on la garde
+      return;
     }
     await into(accounts).insertOnConflictUpdate(
       remote.copyWith(dirty: const Value(false)),
@@ -266,6 +410,36 @@ class AppDatabase extends _$AppDatabase {
       return;
     }
     await into(transactions).insertOnConflictUpdate(
+      remote.copyWith(dirty: const Value(false)),
+    );
+  }
+
+  Future<void> upsertBudgetFromRemote(BudgetsCompanion remote, DateTime remoteUpdatedAt) async {
+    final existing = await (select(budgets)..where((b) => b.id.equals(remote.id.value))).getSingleOrNull();
+    if (existing != null && existing.updatedAt.isAfter(remoteUpdatedAt) && existing.dirty) {
+      return;
+    }
+    await into(budgets).insertOnConflictUpdate(
+      remote.copyWith(dirty: const Value(false)),
+    );
+  }
+
+  Future<void> upsertRecurringFromRemote(RecurringTransactionsCompanion remote, DateTime remoteUpdatedAt) async {
+    final existing = await (select(recurringTransactions)..where((r) => r.id.equals(remote.id.value))).getSingleOrNull();
+    if (existing != null && existing.updatedAt.isAfter(remoteUpdatedAt) && existing.dirty) {
+      return;
+    }
+    await into(recurringTransactions).insertOnConflictUpdate(
+      remote.copyWith(dirty: const Value(false)),
+    );
+  }
+
+  Future<void> upsertSavingsGoalFromRemote(SavingsGoalsCompanion remote, DateTime remoteUpdatedAt) async {
+    final existing = await (select(savingsGoals)..where((g) => g.id.equals(remote.id.value))).getSingleOrNull();
+    if (existing != null && existing.updatedAt.isAfter(remoteUpdatedAt) && existing.dirty) {
+      return;
+    }
+    await into(savingsGoals).insertOnConflictUpdate(
       remote.copyWith(dirty: const Value(false)),
     );
   }

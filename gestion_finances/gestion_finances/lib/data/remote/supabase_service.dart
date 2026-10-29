@@ -77,4 +77,52 @@ class SupabaseService {
     final res = await query;
     return List<Map<String, dynamic>>.from(res);
   }
+
+  // ---------------------------------------------------------------------
+  // BUDGETS
+  // ---------------------------------------------------------------------
+
+  Future<void> pushBudget(Map<String, dynamic> data) =>
+      client.from('budgets').upsert(data);
+
+  Future<List<Map<String, dynamic>>> pullBudgets(DateTime? since) async {
+    var query = client.from('budgets').select();
+    if (since != null) {
+      query = query.gt('updated_at', since.toIso8601String());
+    }
+    final res = await query;
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  // ---------------------------------------------------------------------
+  // RECURRING TRANSACTIONS
+  // ---------------------------------------------------------------------
+
+  Future<void> pushRecurring(Map<String, dynamic> data) =>
+      client.from('recurring_transactions').upsert(data);
+
+  Future<List<Map<String, dynamic>>> pullRecurring(DateTime? since) async {
+    var query = client.from('recurring_transactions').select();
+    if (since != null) {
+      query = query.gt('updated_at', since.toIso8601String());
+    }
+    final res = await query;
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  // ---------------------------------------------------------------------
+  // SAVINGS GOALS
+  // ---------------------------------------------------------------------
+
+  Future<void> pushSavingsGoal(Map<String, dynamic> data) =>
+      client.from('savings_goals').upsert(data);
+
+  Future<List<Map<String, dynamic>>> pullSavingsGoals(DateTime? since) async {
+    var query = client.from('savings_goals').select();
+    if (since != null) {
+      query = query.gt('updated_at', since.toIso8601String());
+    }
+    final res = await query;
+    return List<Map<String, dynamic>>.from(res);
+  }
 }

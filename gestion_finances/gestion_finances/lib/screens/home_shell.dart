@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'accounts/account_form_sheet.dart';
 import 'accounts/accounts_screen.dart';
+import 'budgets/budgets_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'settings/settings_screen.dart';
 import 'transactions/transaction_form_screen.dart';
@@ -20,6 +21,7 @@ class _HomeShellState extends State<HomeShell> {
   static const _screens = [
     DashboardScreen(),
     TransactionsScreen(),
+    BudgetsScreen(),
     AccountsScreen(),
     SettingsScreen(),
   ];
@@ -35,20 +37,21 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   /// Le bouton "+" change de comportement selon l'onglet actif :
-  /// - Dashboard / Mouvements -> ajouter une transaction
+  /// - Dashboard / Mouvements / Budgets -> ajouter une transaction
   /// - Comptes -> ajouter un compte
   /// - Réglages -> pas de bouton
   Widget? _buildFab() {
     switch (_index) {
       case 0:
       case 1:
+      case 2:
         return FloatingActionButton(
           key: const ValueKey('fab_transaction'),
           onPressed: _openTransactionForm,
           tooltip: 'Ajouter une transaction',
           child: const Icon(Icons.add),
         );
-      case 2:
+      case 3:
         return FloatingActionButton(
           key: const ValueKey('fab_account'),
           onPressed: _openAccountForm,
@@ -67,6 +70,7 @@ class _HomeShellState extends State<HomeShell> {
       floatingActionButton: _buildFab(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
+        type: BottomNavigationBarType.fixed,
         onTap: (i) => setState(() => _index = i),
         items: const [
           BottomNavigationBarItem(
@@ -78,6 +82,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.receipt_long_outlined),
             activeIcon: Icon(Icons.receipt_long),
             label: 'Mouvements',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pie_chart_outline),
+            activeIcon: Icon(Icons.pie_chart),
+            label: 'Budgets',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet_outlined),
