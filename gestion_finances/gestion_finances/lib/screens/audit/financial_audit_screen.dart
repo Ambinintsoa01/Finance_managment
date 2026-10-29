@@ -31,27 +31,35 @@ class FinancialAuditScreen extends ConsumerWidget {
     score = score.clamp(10, 100);
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Audit Financier & Conseils'),
+        title: const Text('Audit Financier & Stratégie'),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.only(top: 8, bottom: 90),
         children: [
-          // Carte Score Global
+          // Carte Score Global (Inspirée du style sombre de la maquette)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: score >= 70
-                    ? [const Color(0xFF1B5E20), const Color(0xFF2E7D32)]
+                    ? [AppTheme.emeraldDarkest, AppTheme.emeraldDeep]
                     : (score >= 50
-                        ? [const Color(0xFFE65100), const Color(0xFFF57C00)]
-                        : [const Color(0xFFB71C1C), const Color(0xFFC62828)]),
+                        ? [const Color(0xFF1B382F), const Color(0xFF285043)]
+                        : [const Color(0xFF5E1B24), const Color(0xFF7D2B35)]),
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x22051F20),
+                  blurRadius: 18,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -61,7 +69,11 @@ class FinancialAuditScreen extends ConsumerWidget {
                     children: [
                       const Text(
                         'Score de Maîtrise Financière',
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                        style: TextStyle(
+                          color: AppTheme.emeraldSage,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -71,15 +83,15 @@ class FinancialAuditScreen extends ConsumerWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         health.isDeficit
-                            ? 'Vos dépenses dépassent vos revenus : action immédiate requise.'
-                            : 'Vos dépenses sont bien inférieures à vos gains ce mois-ci.',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ? 'Vos dépenses dépassent vos revenus : action recommandée.'
+                            : 'Vos dépenses restent sous contrôle par rapport à vos revenus.',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ],
                   ),
@@ -88,14 +100,20 @@ class FinancialAuditScreen extends ConsumerWidget {
                   width: 68,
                   height: 68,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: AppTheme.emeraldMint,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Text(
                       '$score',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.emeraldDarkest,
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                       ),
@@ -107,234 +125,242 @@ class FinancialAuditScreen extends ConsumerWidget {
           ),
 
           // 1. RAPPORT RÈGLE 50 / 30 / 20
-          Card(
+          Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppTheme.cardBorder, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.pie_chart_outline_rounded, color: AppTheme.emeraldPine, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Règle d\'or 50 / 30 / 20',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  rule.diagnosticSummary,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+
+                // Barre de répartition visuelle
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
                     children: [
-                      Icon(Icons.pie_chart_outline, color: AppTheme.primary, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'Règle d\'or 50 / 30 / 20',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      Expanded(
+                        flex: (rule.actualNeedsPercent * 10).round().clamp(1, 1000),
+                        child: Container(
+                          height: 12,
+                          color: AppTheme.emeraldPine,
+                        ),
+                      ),
+                      Expanded(
+                        flex: (rule.actualWantsPercent * 10).round().clamp(1, 1000),
+                        child: Container(
+                          height: 12,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                      Expanded(
+                        flex: (rule.actualSavingsPercent * 10).round().clamp(1, 1000),
+                        child: Container(
+                          height: 12,
+                          color: AppTheme.income,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    rule.diagnosticSummary,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 16),
 
-                  // Barre de répartition visuelle
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: (rule.actualNeedsPercent * 10).round().clamp(1, 1000),
-                          child: Container(
-                            height: 12,
-                            color: const Color(0xFF3E7CB1),
-                          ),
-                        ),
-                        Expanded(
-                          flex: (rule.actualWantsPercent * 10).round().clamp(1, 1000),
-                          child: Container(
-                            height: 12,
-                            color: Colors.purple,
-                          ),
-                        ),
-                        Expanded(
-                          flex: (rule.actualSavingsPercent * 10).round().clamp(1, 1000),
-                          child: Container(
-                            height: 12,
-                            color: AppTheme.income,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Détail des 3 blocs
-                  _PillarRow(
-                    label: '50% Besoins essentiels (Needs)',
-                    actualAmount: rule.needsSpent,
-                    targetAmount: rule.targetNeeds,
-                    actualPercent: rule.actualNeedsPercent,
-                    targetPercent: 50,
-                    color: const Color(0xFF3E7CB1),
-                    icon: Icons.shield_outlined,
-                  ),
-                  const Divider(height: 16),
-                  _PillarRow(
-                    label: '30% Envies & Confort (Wants)',
-                    actualAmount: rule.wantsSpent,
-                    targetAmount: rule.targetWants,
-                    actualPercent: rule.actualWantsPercent,
-                    targetPercent: 30,
-                    color: Colors.purple,
-                    icon: Icons.auto_awesome_outlined,
-                    isWarning: rule.actualWantsPercent > 35,
-                  ),
-                  const Divider(height: 16),
-                  _PillarRow(
-                    label: '20% Épargne & Avenir (Savings)',
-                    actualAmount: rule.savingsAllocated,
-                    targetAmount: rule.targetSavings,
-                    actualPercent: rule.actualSavingsPercent,
-                    targetPercent: 20,
-                    color: AppTheme.income,
-                    icon: Icons.savings_outlined,
-                    isWarning: rule.actualSavingsPercent < 15,
-                  ),
-                ],
-              ),
+                // Détail des 3 piliers
+                _PillarRow(
+                  label: '50% Besoins essentiels (Needs)',
+                  actualAmount: rule.needsSpent,
+                  targetAmount: rule.targetNeeds,
+                  actualPercent: rule.actualNeedsPercent,
+                  targetPercent: 50,
+                  color: AppTheme.emeraldPine,
+                  icon: Icons.shield_outlined,
+                ),
+                Divider(height: 16, color: AppTheme.cardBorder.withValues(alpha: 0.6)),
+                _PillarRow(
+                  label: '30% Envies & Confort (Wants)',
+                  actualAmount: rule.wantsSpent,
+                  targetAmount: rule.targetWants,
+                  actualPercent: rule.actualWantsPercent,
+                  targetPercent: 30,
+                  color: Colors.amber.shade800,
+                  icon: Icons.auto_awesome_outlined,
+                  isWarning: rule.actualWantsPercent > 35,
+                ),
+                Divider(height: 16, color: AppTheme.cardBorder.withValues(alpha: 0.6)),
+                _PillarRow(
+                  label: '20% Épargne & Avenir (Savings)',
+                  actualAmount: rule.savingsAllocated,
+                  targetAmount: rule.targetSavings,
+                  actualPercent: rule.actualSavingsPercent,
+                  targetPercent: 20,
+                  color: AppTheme.income,
+                  icon: Icons.savings_outlined,
+                  isWarning: rule.actualSavingsPercent < 15,
+                ),
+              ],
             ),
           ),
 
           // 2. RADAR DES DÉPENSES FOURMIS (MICRO-FUITES)
-          Card(
+          Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.radar_rounded, color: Colors.amber.shade900, size: 22),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Radar des "Dépenses Fourmis"',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppTheme.cardBorder, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.radar_rounded, color: Colors.amber.shade900, size: 22),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Radar des "Dépenses Fourmis"',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Les petits achats de moins de 15 000 Ar paraissent inoffensifs isolément, mais constituent la 1ère fuite d\'argent inconsciente.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${micro.count} micro-achats',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade900,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${formatAmount(micro.totalAmount)} ce mois (${micro.percentOfTotalExpenses.toStringAsFixed(0)}% du total)',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Coût sur 1 an :',
-                                style: TextStyle(fontSize: 11, color: Colors.grey),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                formatAmount(micro.projectedAnnualCost),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.expense,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (micro.topCategoryName != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Poste le plus touché : ${micro.topCategoryName}',
-                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
                     ),
                   ],
-                ],
-              ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Les petits achats de moins de 15 000 Ar paraissent inoffensifs isolément, mais constituent la 1ère fuite d\'argent inconsciente.',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${micro.count} micro-achats',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Total : ${formatAmount(micro.totalAmount)}',
+                              style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.emeraldSage.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${formatAmount(micro.projectedAnnualCost)}/an',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.emeraldDarkest,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${micro.percentOfTotalExpenses.toStringAsFixed(0)}% des sorties',
+                              style: const TextStyle(fontSize: 12, color: AppTheme.emeraldPine),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
           // 3. SIMULATEUR D'ACCUMULATION PATRIMONIALE
-          Card(
+          Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.trending_up_rounded, color: Colors.teal, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'Projection d\'Épargne dans le temps',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppTheme.cardBorder, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.trending_up_rounded, color: AppTheme.emeraldPine, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Projection d\'Épargne dans le temps',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Si vous maintenez votre capacité d\'épargne actuelle (${formatAmount(wealth.monthlySavingsRate)}/mois) :',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      _HorizonCard(label: 'Dans 6 mois', amount: wealth.in6Months),
-                      const SizedBox(width: 8),
-                      _HorizonCard(label: 'Dans 1 an', amount: wealth.in1Year),
-                      const SizedBox(width: 8),
-                      _HorizonCard(label: 'Dans 3 ans', amount: wealth.in3Years),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Si vous maintenez votre capacité d\'épargne actuelle (${formatAmount(wealth.monthlySavingsRate)}/mois) :',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _HorizonCard(label: 'Dans 6 mois', amount: wealth.in6Months),
+                    const SizedBox(width: 8),
+                    _HorizonCard(label: 'Dans 1 an', amount: wealth.in1Year),
+                    const SizedBox(width: 8),
+                    _HorizonCard(label: 'Dans 3 ans', amount: wealth.in3Years),
+                  ],
+                ),
+              ],
             ),
           ),
 
@@ -343,47 +369,56 @@ class FinancialAuditScreen extends ConsumerWidget {
             padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
               'Actions Recommandées',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.3,
+              ),
             ),
           ),
 
           ...advices.map((ad) {
-            return Card(
+            return Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: ad.color.withValues(alpha: 0.3)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.cardBorder, width: 1),
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(14),
                 leading: CircleAvatar(
-                  backgroundColor: ad.color.withValues(alpha: 0.15),
+                  backgroundColor: ad.color.withValues(alpha: 0.12),
                   child: Icon(ad.icon, color: ad.color),
                 ),
                 title: Text(
                   ad.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    Text(ad.message, style: const TextStyle(fontSize: 12)),
+                    Text(ad.message, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                     if (ad.potentialMonthlySavings != null && ad.potentialMonthlySavings! > 0) ...[
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.income.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppTheme.emeraldMint,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Économie potentielle : +${formatAmount(ad.potentialMonthlySavings!)}/mois',
                           style: const TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.income,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.emeraldDarkest,
                           ),
                         ),
                       ),
@@ -434,13 +469,17 @@ class _PillarRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppTheme.textPrimary,
+                ),
               ),
               Text(
                 'Réel : ${formatAmount(actualAmount)} (${actualPercent.toStringAsFixed(0)}%) • Cible : ${formatAmount(targetAmount)}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: isWarning ? Colors.orange.shade800 : Colors.grey.shade700,
+                  color: isWarning ? Colors.orange.shade800 : AppTheme.textMuted,
                   fontWeight: isWarning ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -472,21 +511,22 @@ class _HorizonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             Text(
               formatAmount(amount),
               style: const TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 color: AppTheme.income,
               ),
             ),

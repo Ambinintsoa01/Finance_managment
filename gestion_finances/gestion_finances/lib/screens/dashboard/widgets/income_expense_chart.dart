@@ -16,7 +16,9 @@ class _Bucket {
 }
 
 class IncomeExpenseChart extends ConsumerWidget {
-  const IncomeExpenseChart({super.key});
+  const IncomeExpenseChart({super.key, this.showCard = true});
+
+  final bool showCard;
 
   List<_Bucket> _buildBuckets(DashboardPeriod period, DateTime refDate) {
     switch (period) {
@@ -63,59 +65,107 @@ class IncomeExpenseChart extends ConsumerWidget {
       (m, b) => [m, b.income, b.expense].reduce((a, c) => a > c ? a : c),
     );
 
+    Widget content;
     if (maxY == 0) {
-      return const ChartCard(
-        title: 'Entrées vs Sorties',
-        child: SizedBox(
-          height: 160,
-          child: Center(child: Text('Aucune donnée sur cette période', style: TextStyle(color: Colors.grey))),
+      content = const SizedBox(
+        height: 160,
+        child: Center(
+          child: Text(
+            'Aucune donnée sur cette période',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+          ),
         ),
       );
+    } else {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Align(
+            alignment: Alignment.centerRight,
+            child: _Legend(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 190,
+            child: BarChart(
+              BarChartData(
+                maxY: maxY * 1.2,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => AppTheme.emeraldDarkest,
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final isIncome = rodIndex == 0;
+                      return BarTooltipItem(
+                        '${isIncome ? "Entrée" : "Sortie"}\n${rod.toY.toStringAsFixed(0)}',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.toInt();
+                        if (i < 0 || i >= buckets.length) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            buckets[i].label,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                gridData: const FlGridData(show: false),
+                barGroups: [
+                  for (var i = 0; i < buckets.length; i++)
+                    BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: buckets[i].income,
+                          color: AppTheme.income,
+                          width: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        BarChartRodData(
+                          toY: buckets[i].expense,
+                          color: AppTheme.expense,
+                          width: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (!showCard) {
+      return content;
     }
 
     return ChartCard(
       title: 'Entrées vs Sorties',
-      legend: const _Legend(),
-      child: SizedBox(
-        height: 200,
-        child: BarChart(
-          BarChartData(
-            maxY: maxY * 1.2,
-            barTouchData: BarTouchData(enabled: true),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (value, meta) {
-                    final i = value.toInt();
-                    if (i < 0 || i >= buckets.length) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(buckets[i].label, style: const TextStyle(fontSize: 10)),
-                    );
-                  },
-                ),
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            gridData: const FlGridData(show: false),
-            barGroups: [
-              for (var i = 0; i < buckets.length; i++)
-                BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(toY: buckets[i].income, color: AppTheme.income, width: 7, borderRadius: BorderRadius.circular(3)),
-                    BarChartRodData(toY: buckets[i].expense, color: AppTheme.expense, width: 7, borderRadius: BorderRadius.circular(3)),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
+      child: content,
     );
   }
 }
@@ -129,12 +179,12 @@ class _Legend extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: const [
         _Dot(color: AppTheme.income),
-        SizedBox(width: 4),
-        Text('Entrées', style: TextStyle(fontSize: 11)),
-        SizedBox(width: 10),
+        SizedBox(width: 5),
+        Text('Entrées', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+        SizedBox(width: 12),
         _Dot(color: AppTheme.expense),
-        SizedBox(width: 4),
-        Text('Sorties', style: TextStyle(fontSize: 11)),
+        SizedBox(width: 5),
+        Text('Sorties', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
       ],
     );
   }
