@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
@@ -26,9 +27,12 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     _screens = [
       DashboardScreen(
-        onNavigateToTransactions: () => setState(() => _index = 1),
+        onNavigateToTransactions: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+          );
+        },
       ),
-      const TransactionsScreen(),
       const BudgetsScreen(),
       const FinancialAuditScreen(),
       const AccountsScreen(),
@@ -46,130 +50,189 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget? _buildFab() {
-    switch (_index) {
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-        return FloatingActionButton(
-          key: const ValueKey('fab_transaction'),
-          backgroundColor: AppTheme.emeraldDarkest,
-          foregroundColor: AppTheme.emeraldMint,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          onPressed: _openTransactionForm,
-          tooltip: 'Ajouter une transaction',
-          child: const Icon(Icons.add_rounded, size: 28),
-        );
-      case 4:
-        return FloatingActionButton(
-          key: const ValueKey('fab_account'),
-          backgroundColor: AppTheme.emeraldDarkest,
-          foregroundColor: AppTheme.emeraldMint,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          onPressed: _openAccountForm,
-          tooltip: 'Ajouter un compte',
-          child: const Icon(Icons.add_rounded, size: 28),
-        );
-      default:
-        return null;
+    // Le FAB ne s'affiche QUE dans l'onglet Comptes (_index == 3) pour créer des comptes
+    if (_index == 3) {
+      return FloatingActionButton(
+        key: const ValueKey('fab_account'),
+        backgroundColor: AppTheme.emeraldDarkest,
+        foregroundColor: AppTheme.emeraldMint,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        onPressed: _openAccountForm,
+        tooltip: 'Ajouter un compte',
+        child: const Icon(Icons.add_rounded, size: 28),
+      );
     }
+    return null;
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final isSelected = _index == index;
+    // Seul le bouton central "+" est coloré. Les autres onglets restent sobres et élégants (style Apple)
+    final color = isSelected ? AppTheme.emeraldDarkest : const Color(0xFF8E8E93);
+
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => _index = index),
+          borderRadius: BorderRadius.circular(20),
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected ? activeIcon : icon,
+                  size: 22,
+                  color: color,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: color,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterAddButton() {
+    return Expanded(
+      child: Center(
+        child: Tooltip(
+          message: 'Ajouter un mouvement',
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openTransactionForm,
+              customBorder: const CircleBorder(),
+              splashColor: AppTheme.emeraldMint.withValues(alpha: 0.3),
+              highlightColor: Colors.transparent,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.emeraldDarkest, AppTheme.emeraldPine],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.emeraldPine.withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1.2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: AppTheme.emeraldMint,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(index: _index, children: _screens),
       floatingActionButton: _buildFab(),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(
-              color: AppTheme.cardBorder.withValues(alpha: 0.8),
-              width: 1,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: 66,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF051F20).withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      blurRadius: 1,
+                      offset: const Offset(0, -1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    _buildNavItem(
+                      index: 0,
+                      icon: Icons.space_dashboard_outlined,
+                      activeIcon: Icons.space_dashboard_rounded,
+                      label: 'Synthèse',
+                    ),
+                    _buildNavItem(
+                      index: 1,
+                      icon: Icons.pie_chart_outline_rounded,
+                      activeIcon: Icons.pie_chart_rounded,
+                      label: 'Budgets',
+                    ),
+                    _buildCenterAddButton(),
+                    _buildNavItem(
+                      index: 2,
+                      icon: Icons.insights_outlined,
+                      activeIcon: Icons.insights_rounded,
+                      label: 'Analyses',
+                    ),
+                    _buildNavItem(
+                      index: 3,
+                      icon: Icons.account_balance_wallet_outlined,
+                      activeIcon: Icons.account_balance_wallet_rounded,
+                      label: 'Comptes',
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0A051F20),
-              blurRadius: 16,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _index,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.emeraldDarkest,
-          unselectedItemColor: const Color(0xFF8FA197),
-          selectedFontSize: 11,
-          unselectedFontSize: 11,
-          elevation: 0,
-          onTap: (i) => setState(() => _index = i),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.space_dashboard_outlined, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.space_dashboard_rounded, size: 22),
-              ),
-              label: 'Synthèse',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.receipt_long_outlined, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.receipt_long_rounded, size: 22),
-              ),
-              label: 'Mouvements',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.pie_chart_outline_rounded, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.pie_chart_rounded, size: 22),
-              ),
-              label: 'Budgets',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.insights_outlined, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.insights_rounded, size: 22),
-              ),
-              label: 'Analyses',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.account_balance_wallet_outlined, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.account_balance_wallet_rounded, size: 22),
-              ),
-              label: 'Comptes',
-            ),
-          ],
         ),
       ),
     );

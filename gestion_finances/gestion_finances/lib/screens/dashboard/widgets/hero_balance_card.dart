@@ -186,69 +186,69 @@ class HeroBalanceCard extends ConsumerWidget {
               const SizedBox(height: 22),
 
               // Dock d'actions rapides (comme la maquette : Entrée, Sortie, Virement, Stratégie)
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.arrow_downward_rounded,
-                      label: 'Revenu',
-                      isHighlight: false,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TransactionFormScreen(initialType: TxType.income),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.arrow_upward_rounded,
-                      label: 'Dépense',
-                      isHighlight: false,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TransactionFormScreen(initialType: TxType.expense),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.swap_horiz_rounded,
-                      label: 'Virement',
-                      isHighlight: false,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TransferFormScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.auto_graph_rounded,
-                      label: 'Audit',
-                      isHighlight: true, // bouton contrasté vert menthe comme sur la maquette
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const FinancialAuditScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _QuickActionButton(
+              //         icon: Icons.arrow_downward_rounded,
+              //         label: 'Revenu',
+              //         isHighlight: false,
+              //         onTap: () {
+              //           Navigator.of(context).push(
+              //             MaterialPageRoute(
+              //               builder: (_) => const TransactionFormScreen(initialType: TxType.income),
+              //             ),
+              //           );
+              //         },
+              //       ),
+              //     ),
+              //     const SizedBox(width: 8),
+              //     Expanded(
+              //       child: _QuickActionButton(
+              //         icon: Icons.arrow_upward_rounded,
+              //         label: 'Dépense',
+              //         isHighlight: false,
+              //         onTap: () {
+              //           Navigator.of(context).push(
+              //             MaterialPageRoute(
+              //               builder: (_) => const TransactionFormScreen(initialType: TxType.expense),
+              //             ),
+              //           );
+              //         },
+              //       ),
+              //     ),
+              //     const SizedBox(width: 8),
+              //     Expanded(
+              //       child: _QuickActionButton(
+              //         icon: Icons.swap_horiz_rounded,
+              //         label: 'Virement',
+              //         isHighlight: false,
+              //         onTap: () {
+              //           Navigator.of(context).push(
+              //             MaterialPageRoute(
+              //               builder: (_) => const TransferFormScreen(),
+              //             ),
+              //           );
+              //         },
+              //       ),
+              //     ),
+              //     const SizedBox(width: 8),
+              //     Expanded(
+              //       child: _QuickActionButton(
+              //         icon: Icons.auto_graph_rounded,
+              //         label: 'Audit',
+              //         isHighlight: true, // bouton contrasté vert menthe comme sur la maquette
+              //         onTap: () {
+              //           Navigator.of(context).push(
+              //             MaterialPageRoute(
+              //               builder: (_) => const FinancialAuditScreen(),
+              //             ),
+              //           );
+              //         },
+              //       ),
+              //     ),
+              //   ],
+              // ),
             ],
           ),
         ],
